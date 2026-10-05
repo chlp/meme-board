@@ -12,6 +12,9 @@ extern bool                sdSoundActive;
 extern char                sbCurKey;
 extern bool                sbPrevComma;
 extern bool                sbPrevSlash;
+// Dual-button memory slots (index = DualBtnId): board dir + key, '\0' = empty.
+extern String              sbSlotDir[2];
+extern char                sbSlotKey[2];
 
 void scanSoundboardDirs();
 void sbInitBrowseSelection();
@@ -20,6 +23,7 @@ void sbResetInputState(); // clears prevSbKeys, sbPrevComma, sbPrevSlash
 void soundboardRefresh();
 void soundboardHandleKeyChange(const Keyboard_Class::KeysState &st);
 void sbDrawBrowseBadge(char key);
+void soundboardHandleButtons(); // dual button: long = remember meme, short = play it
 
 void drawBoardSplash();
 void drawPiano();

@@ -2,9 +2,10 @@
 #include "config.h"
 #include <M5Cardputer.h>
 #include <SD.h>
+#include "soundboard.h"
+#include "bomb.h"
 
 extern bool sdReady;
-extern int  soundboardBoardIdx;
 
 uint8_t  masterVolume         = 200;
 uint32_t volumeDisplayUntilMs = 0;
@@ -32,6 +33,10 @@ void saveSettings() {
     if (!f) return;
     f.printf("volume=%d\n", (int)masterVolume);
     f.printf("panel=%d\n",  soundboardBoardIdx);
+    f.printf("bomb_best=%d\n", bombBest);
+    for (int i = 0; i < 2; i++) {
+        if (sbSlotKey[i]) f.printf("slot%d=%c%s\n", i, sbSlotKey[i], sbSlotDir[i].c_str());
+    }
     f.close();
 }
 
@@ -45,9 +50,17 @@ void loadSettings() {
         int eq = line.indexOf('=');
         if (eq < 0) continue;
         String key = line.substring(0, eq);
-        int    val = line.substring(eq + 1).toInt();
-        if      (key == "volume") masterVolume       = (uint8_t)constrain(val, 0, 255);
-        else if (key == "panel")  soundboardBoardIdx = constrain(val, 0, 999);
+        String str = line.substring(eq + 1);
+        int    val = str.toInt();
+        if      (key == "volume")    masterVolume       = (uint8_t)constrain(val, 0, 255);
+        else if (key == "panel")     soundboardBoardIdx = constrain(val, 0, 999);
+        else if (key == "bomb_best") bombBest           = max(val, 0);
+        else if ((key == "slot0" || key == "slot1") && str.length() > 1) {
+            // slot<N>=<key><board dir>, e.g. slot0=a/boards/meme
+            int i = key[4] - '0';
+            sbSlotKey[i] = str[0];
+            sbSlotDir[i] = str.substring(1);
+        }
     }
     f.close();
 }

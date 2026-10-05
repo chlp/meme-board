@@ -3,6 +3,9 @@
 #include "audio.h"
 #include "notes.h"
 #include "ui_utils.h"
+#include "settings.h"
+#include "dualbutton.h"
+#include "log.h"
 #include <SD.h>
 #include <vector>
 #include <algorithm>
@@ -17,6 +20,8 @@ bool                sdSoundActive      = false;
 char                sbCurKey           = 'z';
 bool                sbPrevComma        = false;
 bool                sbPrevSlash        = false;
+String              sbSlotDir[2];
+char                sbSlotKey[2]       = {};
 
 static std::vector<char> prevSbKeys;
 static bool  prevNoteActive[256]  = {};
@@ -212,6 +217,43 @@ static void playSoundboardBrowseSelection() {
         if (ni >= 0)
             M5.Speaker.tone(NOTE_FREQ[ni], 220, NOTE_CH_BASE, true);
         drawSoundboardBrowse(c);
+    }
+}
+
+static void playSlot(int id) {
+    // Play from the board the meme was saved on; the key becomes the current
+    // selection so , / continue from it.
+    String cur = soundboardDir;
+    soundboardDir = sbSlotDir[id];
+    sbCurKey = sbSlotKey[id];
+    playSoundboardBrowseSelection();
+    soundboardDir = cur;
+}
+
+void soundboardHandleButtons() {
+    for (int id = 0; id < 2; id++) {
+        bool held  = dualButtonTakeLong(id);
+        bool click = dualButtonTakeShort(id);
+        if (!held && !click) continue;
+        if (!useSoundboardBrowseUI()) continue;
+        if (boardSplashActive) { boardSplashActive = false; soundboardRefresh(); }
+
+        char msg[40];
+        if (held) {
+            sbSlotDir[id] = soundboardDir;
+            sbSlotKey[id] = sbCurKey;
+            saveSettings();
+            M5.Speaker.tone(1320, 80, NOTE_CH_BASE + 1, true);
+            snprintf(msg, sizeof(msg), "%s = %c (%s)", dualButtonName(id), (char)toupper(sbCurKey),
+                     sdEntryBaseName(soundboardDir).c_str());
+            showStatusOverlay(msg, id == DBTN_BLUE ? TFT_CYAN : TFT_RED);
+            logLine("SB", "slot %s = %s/%c", dualButtonName(id), soundboardDir.c_str(), sbCurKey);
+        } else if (sbSlotKey[id]) {
+            playSlot(id);
+        } else {
+            snprintf(msg, sizeof(msg), "hold %s to remember meme", dualButtonName(id));
+            showStatusOverlay(msg, id == DBTN_BLUE ? TFT_CYAN : TFT_RED);
+        }
     }
 }
 

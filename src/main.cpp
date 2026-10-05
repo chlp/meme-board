@@ -12,6 +12,8 @@
 #include "mp3player.h"
 #include "ui_utils.h"
 #include "sd_serial_xfer.h"
+#include "bomb.h"
+#include "dualbutton.h"
 
 bool    sdReady = false;
 AppMode mode    = SOUNDBOARD;
@@ -19,6 +21,7 @@ AppMode mode    = SOUNDBOARD;
 // ── Mode Switching ────────────────────────────────────────────────────────────
 
 static void enterSoundboard(int boardIdx) {
+    if (mode == BOMB) bombLeave();
     stopAudio();
     stopAllNotes();
     mode = SOUNDBOARD;
@@ -41,7 +44,17 @@ static void enterSoundboard(int boardIdx) {
     saveSettings();
 }
 
+static void enterBomb() {
+    stopAudio();
+    stopAllNotes();
+    boardSplashActive = false;
+    mode          = BOMB;
+    sdSoundActive = false;
+    bombEnter();
+}
+
 static void enterMp3Player() {
+    if (mode == BOMB) bombLeave();
     stopAudio();
     stopAllNotes();
     boardSplashActive = false;
@@ -71,7 +84,7 @@ static void drawBootScreen() {
     d.drawCenterString("MEME BOARD", SCREEN_W / 2, 52);
     d.setTextSize(1);
     d.setTextColor(0xBDF7, TFT_BLACK);
-    d.drawCenterString("v2.0  |  TAB = boards / MP3", SCREEN_W / 2, 76);
+    d.drawCenterString("v2.1 | TAB: boards/piano/bomb/MP3", SCREEN_W / 2, 76);
 }
 
 // ── Arduino Entry Points ──────────────────────────────────────────────────────
@@ -146,16 +159,19 @@ void setup() {
     boardSplashActive = true;
     drawBoardSplash();
 
+    dualButtonInit();
     sdSerialXferSetup();
 }
 
 void loop() {
     M5Cardputer.update();
     sdSerialXferLoop();
+    dualButtonUpdate();
 
     if (volumeDisplayUntilMs && millis() >= volumeDisplayUntilMs) {
         volumeDisplayUntilMs = 0;
         if (mode == MP3_PLAYER) playerDrawUI();
+        else if (mode == BOMB) bombRedraw();
         // In browse mode the image fills the whole screen, so the volume
         // overlay sits on top of pixels we want to keep — redraw the image
         // instead of just blanking the status bar (which would leave a hole).
@@ -182,6 +198,9 @@ void loop() {
         }
     }
 
+    if (mode == BOMB) bombLoop();
+    else if (mode == SOUNDBOARD) soundboardHandleButtons();
+
     if (M5Cardputer.Keyboard.isChange()) {
         Keyboard_Class::KeysState st = M5Cardputer.Keyboard.keysState();
 
@@ -196,13 +215,15 @@ void loop() {
         prevKeyPlus  = keyPlus;
         prevKeyMinus = keyMinus;
 
-        // TAB: cycles boards[0..N-1] → PIANO → MP3 Player → boards[0] → …
+        // TAB: cycles boards[0..N-1] → PIANO → BOMB → MP3 Player → boards[0] → …
         if (M5Cardputer.Keyboard.isPressed() && st.tab) {
             if (mode == MP3_PLAYER) {
                 enterSoundboard(0);
+            } else if (mode == BOMB) {
+                enterMp3Player();
             } else {
                 int next = soundboardBoardIdx + 1;
-                if (next > (int)boardPaths.size()) enterMp3Player();
+                if (next > (int)boardPaths.size()) enterBomb();
                 else enterSoundboard(next);
             }
             return;
@@ -225,7 +246,9 @@ void loop() {
             return;
         }
 
-        if (mode == SOUNDBOARD) {
+        if (mode == BOMB) {
+            bombHandleKeyChange(st);
+        } else if (mode == SOUNDBOARD) {
             soundboardHandleKeyChange(st);
         } else if (M5Cardputer.Keyboard.isPressed()) {
             playerHandleKeys(st);

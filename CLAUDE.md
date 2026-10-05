@@ -1,20 +1,24 @@
 # Cardputer Meme Soundboard — CLAUDE.md
 
 ## Project Overview
-Firmware for **M5 Cardputer ADV** (ESP32-S3): dual-mode device.
+Firmware for **M5 Cardputer ADV** (ESP32-S3): soundboard / piano / bomb game / MP3 player.
 - **Mode 1 — Soundboard**: the UI is chosen by `useSoundboardBrowseUI()` (`sdReady && !boardPaths.empty() && soundboardDir != ""`):
   - **Browse UI** (any `/boards/<name>/` panel is active): `,`/`/` step through keys that have a playable `.mp3` (current panel or `meme/` fallback), ENTER replays the current one, any letter/digit key jumps to that key and plays it immediately. Image (`<key>.jpg`, then `<key>.png`) fills the screen; colour tile with the letter if no image. A key without an `.mp3` plays a short 220 ms tone instead.
   - **Piano** (PIANO slot selected, or no boards on SD / no SD): pure polyphonic synth (tones only, no MP3s), 36 notes C3–B5; hold keys for chords; pressed keys highlighted yellow.
   - Panels are first-level subfolders under `/boards/`, sorted alphabetically with `meme` forced first. Missing file on the active panel → fallback from `/boards/meme/`.
-  - TAB cycles: boards[0] (meme) → … → boards[N-1] → **PIANO** → MP3 Player → boards[0]. PIANO is encoded as `soundboardBoardIdx == boardPaths.size()`.
+  - TAB cycles: boards[0] (meme) → … → boards[N-1] → **PIANO** → **BOMB** → MP3 Player → boards[0]. PIANO is encoded as `soundboardBoardIdx == boardPaths.size()`; BOMB is its own `AppMode`.
+  - **Dual button** (browse UI only): long press (≥600 ms) remembers the current meme (board dir + key) in that button's slot, short press plays it. Slots persist in `/settings.cfg`.
   - Every panel switch shows a splash (`<NAME> BOARD`); the first key press dismisses it and is then processed normally.
-- **Mode 2 — MP3 Player**: file browser rooted at `/mp3`, arbitrary nesting, dirs listed first. Auto-advance continues from the **playing** file's folder (`playerSelectCurrentFile()`), not from the cursor.
+- **Mode 2 — Bomb Defuse** (`bomb.cpp`): press the shown key (a–z, 0–9) before the timer ends. 30 s for the first target, −1 s per success, min 1 s. Success → short green flash + next target; timeout → synthesised explosion (8-bit noise via `M5.Speaker.playRaw`, respects volume) + score screen. If the dual button is connected, ~30 % of targets are BLUE/RED buttons. Best score persists (`bomb_best`). ESC → back to the game splash.
+- **Mode 3 — MP3 Player**: file browser rooted at `/mp3`, arbitrary nesting, dirs listed first. Auto-advance continues from the **playing** file's folder (`playerSelectCurrentFile()`), not from the cursor.
 
 ## Hardware
 - Board: M5Stack Cardputer ADV (ESP32-S3, 240×135 ST7789 display, physical QWERTY keyboard)
 - Audio: built-in I2S speaker via M5Unified
 - Storage: microSD via SPI — SCK=40, MISO=39, MOSI=14, CS=12 (10 MHz)
 - Flash: 8 MB → partition `default_8MB.csv` (the device will not boot with a 16 MB table)
+
+- **M5 Unit Dual Button** on the Grove port (Port.A): blue = G2 (yellow wire), red = G1 (white) — `DBTN_PIN_*` in `config.h`. Pins use `INPUT_PULLDOWN`; the unit's own pull-ups make an idle connected unit read HIGH, so presence is auto-detected (both HIGH ≥100 ms → connected, both LOW ≥2 s → gone).
 
 ## Build System
 - **PlatformIO** + Arduino framework (Arduino-ESP32 2.x / IDF4), board: `m5stack-stamps3`
@@ -32,7 +36,7 @@ Firmware for **M5 Cardputer ADV** (ESP32-S3): dual-mode device.
 
 ## SD Card Structure
 ```
-/settings.cfg       ← written by firmware: volume=<0..255>, panel=<idx>
+/settings.cfg       ← written by firmware: volume=<0..255>, panel=<idx>, bomb_best=<n>, slot<0|1>=<key><board dir>
 /boards/
   meme/             ← default panel: a.mp3, a.jpg, … (a-z, 0-9)
   <other>/          ← custom panel — same filenames; missing file → fallback from meme/
@@ -92,7 +96,7 @@ Keyboard rows bottom → top map to low → high notes (`NOTE_KEY` / `NOTE_FREQ`
 ## Universal Controls
 | Key | Soundboard | MP3 Player |
 |-----|------------|------------|
-| TAB | → next panel → PIANO → MP3 Player (cycle) | → boards[0] (meme) |
+| TAB | → next panel → PIANO → BOMB → MP3 Player (cycle) | → boards[0] (meme) |
 | `+` / `=` | Volume up (step 16, persisted) | Volume up |
 | `-` | Volume down | Volume down |
 | `` ` `` | Stop audio + release all notes | Jump to current / stop / go up |
@@ -107,6 +111,8 @@ src/
   notes.h/cpp            ← note tables, polyphony state, noteOn/noteOff/stopAllNotes
   soundboard.h/cpp       ← board scan, meme/image resolution with fallback, browse UI, piano UI, key handling
   mp3player.h/cpp        ← MP3 player file browser UI and key handling
+  bomb.h/cpp             ← bomb defuse game (state machine, explosion synth)
+  dualbutton.h/cpp       ← M5 Unit Dual Button: presence detection, debounce, press/short/long events
   settings.h/cpp         ← volume state + overlay, load/save /settings.cfg, applyVolume
   ui_utils.h/cpp         ← isEscKey, clearStatusBar, readFileToBuffer (≤200 KB, internal DMA RAM)
   log.h/cpp              ← logLine/logBoot/logHeap/logTaskStack (mutex-protected Serial)

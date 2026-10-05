@@ -1,6 +1,7 @@
 #include "ui_utils.h"
 #include <SD.h>
 #include "esp_heap_caps.h"
+#include "settings.h"
 
 // Maximum image size we will load into RAM.  Larger files are skipped and the
 // caller falls back to the colour-tile.  240×135 RGB565 = ~63 KB; 200 KB is a
@@ -14,6 +15,15 @@ bool isEscKey(const Keyboard_Class::KeysState &st) {
 
 void clearStatusBar() {
     M5Cardputer.Display.fillRect(0, STATUS_Y, SCREEN_W, SCREEN_H - STATUS_Y, TFT_BLACK);
+}
+
+void showStatusOverlay(const char *text, uint16_t color) {
+    auto &d = M5Cardputer.Display;
+    clearStatusBar();
+    d.setTextSize(1);
+    d.setTextColor(color, TFT_BLACK);
+    d.drawCenterString(text, SCREEN_W / 2, STATUS_Y + 8);
+    volumeDisplayUntilMs = millis() + VOL_DISPLAY_MS;
 }
 
 uint8_t *readFileToBuffer(const char *path, size_t &outLen) {

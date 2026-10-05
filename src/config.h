@@ -24,9 +24,9 @@
 #define NOTE_CH_BASE 1
 #define NOTE_CH_CNT  7
 
-// M5 Unit Dual Button on the Grove port (Port.A): yellow wire = G2, white = G1
-#define DBTN_PIN_BLUE    2
-#define DBTN_PIN_RED     1
+// M5 Unit Dual Button on the Grove port (Port.A)
+#define DBTN_PIN_BLUE    1
+#define DBTN_PIN_RED     2
 #define DBTN_DEBOUNCE_MS 25
 #define DBTN_LONG_MS     600
 #define DBTN_DETECT_MS   100

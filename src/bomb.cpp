@@ -170,7 +170,7 @@ static void drawSplash() {
     d.setTextSize(1);
     d.setTextColor(TFT_WHITE, TFT_BLACK);
     d.drawCenterString("Press the shown key before", SCREEN_W / 2, 52);
-    d.drawCenterString("the timer runs out", SCREEN_W / 2, 64);
+    d.drawCenterString("the timer runs out. Wrong = BOOM", SCREEN_W / 2, 64);
     char buf[24];
     snprintf(buf, sizeof(buf), "BEST %d", bombBest);
     d.setTextColor(TFT_CYAN, TFT_BLACK);
@@ -280,9 +280,11 @@ void bombLoop() {
             break;
 
         case B_PLAY: {
-            if ((s_target == TGT_BLUE && btnPress[DBTN_BLUE]) ||
-                (s_target == TGT_RED  && btnPress[DBTN_RED])) {
-                defused();
+            if (btnPress[DBTN_BLUE] || btnPress[DBTN_RED]) {
+                // Wrong button (or both at once) → instant explosion.
+                bool ok = (s_target == TGT_BLUE && btnPress[DBTN_BLUE] && !btnPress[DBTN_RED]) ||
+                          (s_target == TGT_RED  && btnPress[DBTN_RED]  && !btnPress[DBTN_BLUE]);
+                if (ok) defused(); else explode();
                 break;
             }
             // Unit unplugged mid-round while it was the target → pick another.
@@ -333,8 +335,10 @@ void bombHandleKeyChange(const Keyboard_Class::KeysState &st) {
             break;
         case B_PLAY:
             if (esc) { M5.Speaker.stop(CH_TICK); s_state = B_SPLASH; drawSplash(); break; }
-            for (char c : fresh) {
-                if (c == s_target) { defused(); break; }
+            // Any wrong letter/digit → instant explosion.
+            if (!fresh.empty()) {
+                bool ok = fresh.size() == 1 && fresh[0] == s_target;
+                if (ok) defused(); else explode();
             }
             break;
         case B_FLASH:

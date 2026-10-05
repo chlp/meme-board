@@ -9,7 +9,7 @@ Firmware for **M5 Cardputer ADV** (ESP32-S3): soundboard / piano / bomb game / M
   - TAB cycles: boards[0] (meme) → … → boards[N-1] → **PIANO** → **BOMB** → MP3 Player → boards[0]. PIANO is encoded as `soundboardBoardIdx == boardPaths.size()`; BOMB is its own `AppMode`.
   - **Dual button** (browse UI only): long press (≥600 ms) remembers the current meme (board dir + key) in that button's slot, short press plays it. Slots persist in `/settings.cfg`.
   - Every panel switch shows a splash (`<NAME> BOARD`); the first key press dismisses it and is then processed normally.
-- **Mode 2 — Bomb Defuse** (`bomb.cpp`): press the shown key (a–z, 0–9) before the timer ends. 30 s for the first target, −1 s per success, min 1 s. Success → short green flash + next target; timeout → synthesised explosion (8-bit noise via `M5.Speaker.playRaw`, respects volume) + score screen. If the dual button is connected, ~30 % of targets are BLUE/RED buttons. Best score persists (`bomb_best`). ESC → back to the game splash.
+- **Mode 2 — Bomb Defuse** (`bomb.cpp`): press the shown key (a–z, 0–9) before the timer ends. 30 s for the first target, −1 s per success, min 1 s. Success → short green flash + next target; wrong key/button (or several at once) → instant explosion; timeout → synthesised explosion (8-bit noise via `M5.Speaker.playRaw`, respects volume) + score screen. If the dual button is connected, ~30 % of targets are BLUE/RED buttons. Best score persists (`bomb_best`). ESC → back to the game splash.
 - **Mode 3 — MP3 Player**: file browser rooted at `/mp3`, arbitrary nesting, dirs listed first. Auto-advance continues from the **playing** file's folder (`playerSelectCurrentFile()`), not from the cursor.
 
 ## Hardware
@@ -18,7 +18,7 @@ Firmware for **M5 Cardputer ADV** (ESP32-S3): soundboard / piano / bomb game / M
 - Storage: microSD via SPI — SCK=40, MISO=39, MOSI=14, CS=12 (10 MHz)
 - Flash: 8 MB → partition `default_8MB.csv` (the device will not boot with a 16 MB table)
 
-- **M5 Unit Dual Button** on the Grove port (Port.A): blue = G2 (yellow wire), red = G1 (white) — `DBTN_PIN_*` in `config.h`. Pins use `INPUT_PULLDOWN`; the unit's own pull-ups make an idle connected unit read HIGH, so presence is auto-detected (both HIGH ≥100 ms → connected, both LOW ≥2 s → gone).
+- **M5 Unit Dual Button** on the Grove port (Port.A): blue = G1, red = G2 (verified on device) — `DBTN_PIN_*` in `config.h`. Pins use `INPUT_PULLDOWN`; the unit's own pull-ups make an idle connected unit read HIGH, so presence is auto-detected (both HIGH ≥100 ms → connected, both LOW ≥2 s → gone).
 
 ## Build System
 - **PlatformIO** + Arduino framework (Arduino-ESP32 2.x / IDF4), board: `m5stack-stamps3`

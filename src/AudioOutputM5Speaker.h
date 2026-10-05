@@ -77,6 +77,17 @@ public:
     // Call after the last gen->loop() returns false to push remaining samples.
     void flush() override { flushBuffer(); }
 
+    // Block until the speaker has played everything queued on our channel.
+    // Without this, gen->stop() → stop() → _spk->stop() right after flush()
+    // clips the last ~30-50 ms of the stream.  Bails out on requestAbort()
+    // so stopAudio()/startMp3() are never held up by the drain.
+    void drain() {
+        while (_spk->isPlaying(_ch) && !_abortRequested) {
+            esp_task_wdt_reset();
+            vTaskDelay(1);
+        }
+    }
+
 private:
     void flushBuffer() {
         if (_pos == 0 || _abortRequested) { _pos = 0; return; }

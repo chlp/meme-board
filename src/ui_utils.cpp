@@ -28,7 +28,8 @@ uint8_t *readFileToBuffer(const char *path, size_t &outLen) {
     // enabled.  plain free() is safe for heap_caps_malloc pointers on ESP32.
     uint8_t *buf = (uint8_t *)heap_caps_malloc(outLen, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
     if (!buf) { f.close(); return nullptr; }
-    f.read(buf, outLen);
+    size_t got = f.read(buf, outLen);
     f.close();
+    if (got != outLen) { free(buf); return nullptr; }
     return buf;
 }

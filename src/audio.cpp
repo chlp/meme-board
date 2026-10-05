@@ -30,7 +30,7 @@ static SemaphoreHandle_t s_mutex = nullptr;
 // Watchdog handling: the IDF task watchdog (TWDT) by default watches IDLE0.
 // Our high-priority audio task pinned to core 0 deliberately starves IDLE0
 // while it is decoding — that is the whole point of running the decoder on
-// a dedicated core.  Setup unsubscribes IDLE0 (`disableCore0WDT()` in
+// a dedicated core.  Setup unsubscribes IDLE0 (`esp_task_wdt_delete()` in
 // main.cpp) and instead subscribes THIS task, so we still catch a hung
 // decoder (e.g. libmad inf-loop on a corrupt MP3) but stop firing when
 // the system is healthy.  We feed TWDT once per outer loop iteration.
@@ -64,6 +64,7 @@ static void audioTaskFn(void *) {
                 } else {
                     if (!gen->loop()) {
                         spk->flush();
+                        spk->drain();
                         // gen->stop() closes the SD file internally.
                         gen->stop();
                         gen = nullptr;

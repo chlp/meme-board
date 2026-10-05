@@ -18,8 +18,6 @@ void sbInitBrowseSelection();
 void sbResetInputState(); // clears prevSbKeys, sbPrevComma, sbPrevSlash
 
 void soundboardRefresh();
-void soundboardDrawIdle();
-void soundboardLoop();
 void soundboardHandleKeyChange(const Keyboard_Class::KeysState &st);
 void sbDrawBrowseBadge(char key);
 

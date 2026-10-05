@@ -198,10 +198,10 @@ static void playSoundboardBrowseSelection() {
     char c = sbCurKey;
     if (resolveMemeMp3ForKey(c, path, sizeof(path))) {
         stopAllNotes();
-        // Stop audio BEFORE any SD read: the audio task (core 0) reads the SD
-        // card via SPI while playing.  If the main task reads SD at the same
-        // time (to load the image below) there is a SPI bus race that causes
-        // crackling, data corruption, and ultimately a reboot.
+        // Stop the previous clip before reading the image.  SD access itself
+        // is thread-safe (FatFS reentrant + SPIClass lock), but loading a JPG
+        // while the decoder streams competes for SD bandwidth and the clip is
+        // being replaced anyway.
         stopAudio();
         sdSoundActive = false;
         drawMemeKeyPreviewGraphic(c);
@@ -313,14 +313,6 @@ void soundboardRefresh() {
     else { pianoNeedsFullRedraw = true; drawPiano(); }
 }
 
-void soundboardDrawIdle() {
-    stopAllNotes();
-    sdSoundActive = false;
-    soundboardRefresh();
-}
-
-void soundboardLoop() {}
-
 void soundboardHandleKeyChange(const Keyboard_Class::KeysState &st) {
     if (isEscKey(st)) {
         stopAudio();
@@ -384,7 +376,8 @@ void soundboardHandleKeyChange(const Keyboard_Class::KeysState &st) {
         return;
     }
 
-    // Piano-only: hold keys for polyphony; play meme MP3 if file exists
+    // Piano: pure synth — hold keys for polyphony.  This branch only runs with
+    // no active board (soundboardDir == ""), so there are no meme files here.
     bool pianoUpdated = false;
     for (char c : prevSbKeys) {
         bool stillHeld = false;
@@ -396,27 +389,12 @@ void soundboardHandleKeyChange(const Keyboard_Class::KeysState &st) {
         for (char pc : prevSbKeys) if (pc == c) { wasHeld = true; break; }
         if (wasHeld) continue;
 
-        char audioPath[64];
-        // In pure PIANO mode (no active board) always play tones, ignore meme/
-        bool haveMeme = (soundboardDir.length() > 0)
-                        && resolveMemeMp3ForKey(c, audioPath, sizeof(audioPath));
-
-        if (haveMeme) {
-            stopAllNotes();
-            // Same SPI-race fix: stop the audio task before SD image access.
-            stopAudio();
-            sdSoundActive = false;
-            M5Cardputer.Display.fillScreen(TFT_BLACK);
-            drawMemeKeyPreviewGraphic(c);
-            if (startMp3(audioPath)) sdSoundActive = true;
-        } else {
-            if (sdSoundActive) { stopAudio(); sdSoundActive = false; }
-            noteOn(c);
-            pianoUpdated = true;
-        }
+        if (sdSoundActive) { stopAudio(); sdSoundActive = false; }
+        noteOn(c);
+        pianoUpdated = true;
     }
 
-    if (pianoUpdated && !sdSoundActive) drawPiano();
+    if (pianoUpdated) drawPiano();
 
     prevSbKeys = curr;
 }

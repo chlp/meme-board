@@ -7,7 +7,6 @@
 struct DirEntry { String name; bool isDir; };
 enum PlayerState { PLAYER_STOPPED, PLAYER_PLAYING, PLAYER_PAUSED };
 
-extern uint32_t    playerHintUntilMs;
 extern bool        playerSplashActive;
 extern String      playerPath;
 extern String      playerFile;
@@ -21,4 +20,3 @@ void drawPlayerSplash();
 void playerAutoAdvance();
 void playerHandleKeys(const Keyboard_Class::KeysState &st);
 void playerGoBack();
-void playerShowCurrentFile();

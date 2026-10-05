@@ -21,7 +21,6 @@ AppMode mode    = SOUNDBOARD;
 static void enterSoundboard(int boardIdx) {
     stopAudio();
     stopAllNotes();
-    playerHintUntilMs = 0;
     mode = SOUNDBOARD;
     sdSoundActive = false;
     if (boardPaths.empty()) {
@@ -46,7 +45,6 @@ static void enterMp3Player() {
     stopAudio();
     stopAllNotes();
     boardSplashActive = false;
-    playerHintUntilMs = 0;
     mode          = MP3_PLAYER;
     sdSoundActive = false;
     playerState   = PLAYER_STOPPED;
@@ -133,8 +131,10 @@ void setup() {
     M5.Speaker.setVolume(masterVolume);
 
     if (!boardPaths.empty()) {
-        if (soundboardBoardIdx >= (int)boardPaths.size()) soundboardBoardIdx = 0;
-        soundboardDir = boardPaths[soundboardBoardIdx];
+        // boardPaths.size() is the PIANO slot — restore it too.
+        if (soundboardBoardIdx > (int)boardPaths.size()) soundboardBoardIdx = 0;
+        soundboardDir = (soundboardBoardIdx == (int)boardPaths.size())
+                        ? "" : boardPaths[soundboardBoardIdx];
     } else {
         soundboardBoardIdx = 0;
         soundboardDir      = "";
@@ -181,8 +181,6 @@ void loop() {
                 sbDrawBrowseBadge(sbCurKey);
         }
     }
-
-    if (mode == SOUNDBOARD) soundboardLoop();
 
     if (M5Cardputer.Keyboard.isChange()) {
         Keyboard_Class::KeysState st = M5Cardputer.Keyboard.keysState();

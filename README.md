@@ -21,7 +21,6 @@ Two sub-modes, selected automatically based on SD card state:
 
 **Piano** (no SD boards, or PIANO board active):
 - Hold any key to play the corresponding note (polyphonic, up to 7 voices)
-- If a key has an `.mp3` file on the active board, the meme sound plays instead of a tone
 - Pressed keys are highlighted yellow on the on-screen piano
 - **ESC** stops all notes
 
@@ -29,9 +28,9 @@ Two sub-modes, selected automatically based on SD card state:
 - Scrollable file browser starting at the `/mp3` folder on the SD card; arbitrary sub-folder nesting is supported
 - Navigate with `j`/`.` (next) and `k`/`;` (previous)
 - `l`/`/` to enter a folder; `h`/`,` to go up
-- Press **ENTER** to play the selected track (or enter a folder)
-- Tracks auto-advance when finished
-- **ESC** while playing/paused scrolls the list to the current file; **ESC** while stopped goes up one level
+- Press **ENTER** to play the selected track (or enter a folder); **ENTER** again stops it, a third press restarts it from the beginning
+- Tracks auto-advance to the next file in the same folder, even if you browsed elsewhere meanwhile
+- **ESC** while playing: the first press scrolls the list to the current track, the next press stops playback; **ESC** while stopped goes up one level
 
 ### Switching Modes
 Press **TAB** to cycle through all modes in order:

@@ -8,7 +8,6 @@
 
 extern bool sdReady;
 
-uint32_t    playerHintUntilMs = 0;
 bool        playerSplashActive = false;
 String      playerPath        = MP3_DIR;
 String      playerFile        = "";
@@ -159,10 +158,12 @@ static void playerTogglePlay() {
     playerDrawUI();
 }
 
-void playerShowCurrentFile() {
-    if (playerFile.isEmpty()) return;
+// Point playerPath / playerSelIdx at playerFile (loading its folder if the
+// user has browsed elsewhere).  Returns false if the file is not listed.
+static bool playerSelectCurrentFile() {
+    if (playerFile.isEmpty()) return false;
     int lastSlash = playerFile.lastIndexOf('/');
-    if (lastSlash < 0) return;
+    if (lastSlash < 0) return false;
     String dir  = playerFile.substring(0, lastSlash);
     String name = playerFile.substring(lastSlash + 1);
     if (dir != playerPath) {
@@ -172,13 +173,27 @@ void playerShowCurrentFile() {
     for (int i = 0; i < (int)playerEntries.size(); i++) {
         if (!playerEntries[i].isDir && playerEntries[i].name == name) {
             playerSelIdx = i;
-            break;
+            return true;
         }
     }
-    playerDrawUI();
+    playerSelIdx = 0;
+    return false;
+}
+
+static bool playerCursorOnCurrentFile() {
+    if (playerEntries.empty() || playerFile.isEmpty()) return false;
+    auto &e = playerEntries[playerSelIdx];
+    return !e.isDir && playerPath + "/" + e.name == playerFile;
 }
 
 void playerAutoAdvance() {
+    // Advance from the track that just finished, not from the cursor — the
+    // user may have scrolled or browsed into another folder meanwhile.
+    if (!playerSelectCurrentFile()) {
+        playerState = PLAYER_STOPPED;
+        playerDrawUI();
+        return;
+    }
     int next = playerSelIdx + 1;
     while (next < (int)playerEntries.size() && playerEntries[next].isDir) next++;
     if (next < (int)playerEntries.size()) {
@@ -194,6 +209,11 @@ void playerAutoAdvance() {
 void playerHandleKeys(const Keyboard_Class::KeysState &st) {
     if (isEscKey(st)) {
         if (playerState == PLAYER_PLAYING || playerState == PLAYER_PAUSED) {
+            // First ESC jumps the list to the current track, second one stops.
+            if (!playerCursorOnCurrentFile() && playerSelectCurrentFile()) {
+                playerDrawUI();
+                return;
+            }
             stopAudio();
             playerState = PLAYER_STOPPED;
             playerDrawUI();

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Normalize MP3 files in sd_card_content/ for Cardputer playback.
 #
-# Rules (tuned for the built-in mono speaker, Helix MP3 decoder on ESP32-S3):
+# Rules (tuned for the built-in mono speaker, libmad MP3 decoder on ESP32-S3):
 #   /boards/**  — meme / soundboard clips  → mono, 44100 Hz, 96 kb/s
-#   /mp3/**     — music player tracks      → stereo, 44100 Hz, 128 kb/s max
+#   /mp3/**     — music player tracks      → mono, 44100 Hz, 128 kb/s max
 #
 # A file is only re-encoded when it deviates from the target:
 #   wrong sample rate, wrong channel count, or bitrate above the ceiling.
